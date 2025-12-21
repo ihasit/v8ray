@@ -351,71 +351,77 @@ class AppUpdateNotifier extends StateNotifier<UpdateInfo> {
 
       // 创建批处理脚本来完成更新
       // 这个脚本会在应用退出后执行，复制文件并重启应用
-      // 注意：批处理脚本中的变量需要使用实际路径，不能使用 Dart 变量
-      final batchScript = '''
-@echo off
+      // 注意：使用 Windows 路径分隔符，避免中文字符以防止编码问题
+      
+      // 确保路径使用 Windows 分隔符
+      final sourceDirWin = sourceDir.replaceAll('/', '\\');
+      final appDirWin = appDir.replaceAll('/', '\\');
+      final tempExtractDirWin = tempExtractDir.replaceAll('/', '\\');
+      final executablePathWin = executablePath.replaceAll('/', '\\');
+      final logFileWin = '$appDirWin\\TEMP\\v8ray_update.log';
+      
+      final batchScript = '''@echo off
 chcp 65001 > nul
-set LOGFILE=$appDir\\TEMP\\v8ray_update.log
+set LOGFILE=$logFileWin
 echo V8Ray Update Log > "%LOGFILE%"
-echo 更新时间: %DATE% %TIME% >> "%LOGFILE%"
+echo Update Time: %DATE% %TIME% >> "%LOGFILE%"
 echo ======================================== >> "%LOGFILE%"
 
 echo ========================================
-echo V8Ray 自动更新脚本
+echo V8Ray Auto Update Script
 echo ========================================
 echo.
 
-echo [1/5] 等待 V8Ray 关闭...
-echo [1/5] 等待 V8Ray 关闭... >> "%LOGFILE%"
+echo [1/5] Waiting for V8Ray to close...
+echo [1/5] Waiting for V8Ray to close... >> "%LOGFILE%"
 timeout /t 5 /nobreak > nul
 
-echo [2/5] 检查源目录...
-echo 源目录: $sourceDir >> "%LOGFILE%"
-echo 目标目录: $appDir >> "%LOGFILE%"
-dir "$sourceDir" >> "%LOGFILE%" 2>&1
+echo [2/5] Checking source directory...
+echo Source: $sourceDirWin >> "%LOGFILE%"
+echo Target: $appDirWin >> "%LOGFILE%"
+dir "$sourceDirWin" >> "%LOGFILE%" 2>&1
 
-echo [3/5] 更新 V8Ray 文件...
-echo 源目录: $sourceDir
-echo 目标目录: $appDir
+echo [3/5] Updating V8Ray files...
+echo Source: $sourceDirWin
+echo Target: $appDirWin
 
-REM 使用 robocopy 代替 xcopy，更可靠
-REM /E = 包含空目录, /IS = 包含相同文件, /IT = 包含修改文件, /NFL /NDL /NJH /NJS = 静默模式
-robocopy "$sourceDir" "$appDir" /E /IS /IT /R:3 /W:1 >> "%LOGFILE%" 2>&1
+REM Use robocopy for reliable file copy
+robocopy "$sourceDirWin" "$appDirWin" /E /IS /IT /R:3 /W:1 >> "%LOGFILE%" 2>&1
 set ROBOCOPY_EXIT=%errorlevel%
-echo Robocopy 退出代码: %ROBOCOPY_EXIT% >> "%LOGFILE%"
+echo Robocopy exit code: %ROBOCOPY_EXIT% >> "%LOGFILE%"
 
-REM robocopy 退出代码: 0-7 表示成功, >=8 表示失败
+REM robocopy: 0-7 = success, >=8 = error
 if %ROBOCOPY_EXIT% GEQ 8 (
-    echo 错误：文件复制失败！退出代码: %ROBOCOPY_EXIT%
-    echo 错误：文件复制失败！退出代码: %ROBOCOPY_EXIT% >> "%LOGFILE%"
-    echo 请查看日志文件: %LOGFILE%
+    echo ERROR: File copy failed! Exit code: %ROBOCOPY_EXIT%
+    echo ERROR: File copy failed! Exit code: %ROBOCOPY_EXIT% >> "%LOGFILE%"
+    echo See log file: %LOGFILE%
     pause
     exit /b 1
 )
 
-echo [4/5] 清理临时文件...
-rmdir /S /Q "$tempExtractDir" >> "%LOGFILE%" 2>&1
+echo [4/5] Cleaning temp files...
+rmdir /S /Q "$tempExtractDirWin" >> "%LOGFILE%" 2>&1
 
-echo [5/5] 启动 V8Ray...
-echo 启动命令: $executablePath >> "%LOGFILE%"
-start "" "$executablePath"
+echo [5/5] Starting V8Ray...
+echo Start command: $executablePathWin >> "%LOGFILE%"
+start "" "$executablePathWin"
 
 echo.
 echo ========================================
-echo 更新完成！
+echo Update Complete!
 echo ========================================
-echo 更新完成！ >> "%LOGFILE%"
-echo 脚本结束时间: %DATE% %TIME% >> "%LOGFILE%"
+echo Update Complete! >> "%LOGFILE%"
+echo Script end time: %DATE% %TIME% >> "%LOGFILE%"
 
-REM 保留窗口几秒让用户看到结果（调试用）
 timeout /t 3 /nobreak > nul
 
-REM 删除批处理脚本自身
+REM Delete this batch script
 del "%~f0"
 ''';
 
       final batchFile = File('${file.parent.path}\\v8ray_update.bat');
-      await batchFile.writeAsString(batchScript, encoding: utf8);
+      // 使用 Windows 默认编码写入，避免 UTF-8 BOM 问题
+      await batchFile.writeAsString(batchScript);
 
       appLogger.info('Created update script: ${batchFile.path}');
       appLogger.info('Batch script content:\n$batchScript');

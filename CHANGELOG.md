@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7] - 2025-12-22
+
+### 🐛 修复
+
+- **修复 Windows 自动更新脚本编码问题**:
+  - 确保路径使用 Windows 分隔符 `\`
+  - 使用英文消息避免 UTF-8 编码问题
+  - 修复批处理脚本内容损坏的问题
+
+---
+
 ## [0.2.6] - 2025-12-22
 
 ### 🐛 修复

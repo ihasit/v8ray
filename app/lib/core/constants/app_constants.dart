@@ -11,7 +11,7 @@ class AppInfo {
   static const String appName = 'V8Ray';
 
   /// 应用版本
-  static const String version = '0.2.6';
+  static const String version = '0.2.7';
 
   /// 构建号
   static const int buildNumber = 1;
