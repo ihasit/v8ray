@@ -405,11 +405,12 @@ echo ========================================
 echo 更新完成！
 echo ========================================
 echo 更新完成！ >> "%LOGFILE%"
-timeout /t 2 /nobreak > nul
+echo 脚本结束时间: %DATE% %TIME% >> "%LOGFILE%"
 
-REM 删除 VBScript 启动器和批处理脚本自身
-set SCRIPT_DIR=%~dp0
-del /F /Q "%SCRIPT_DIR%v8ray_update_launcher.vbs" 2>nul
+REM 保留窗口几秒让用户看到结果（调试用）
+timeout /t 3 /nobreak > nul
+
+REM 删除批处理脚本自身
 del "%~f0"
 ''';
 
@@ -419,27 +420,20 @@ del "%~f0"
       appLogger.info('Created update script: ${batchFile.path}');
       appLogger.info('Batch script content:\n$batchScript');
 
-      // 创建 VBScript 来静默启动批处理脚本（不显示窗口）
-      // 参数说明：Run(command, windowStyle, waitOnReturn)
-      // windowStyle: 0 = 隐藏窗口, 1 = 正常窗口
-      // waitOnReturn: False = 不等待脚本完成
-      final vbsScript = '''
-Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run """${batchFile.path}""", 0, False
-Set WshShell = Nothing
-''';
+      // 直接使用 cmd.exe 启动批处理脚本（更可靠）
+      // 使用 start 命令启动新窗口，/min 最小化窗口
+      // 注意：不使用 VBScript 因为某些系统可能有安全限制
+      appLogger.info('Created update script: ${batchFile.path}');
+      
+      // 使用 cmd /c start 启动批处理脚本
+      // /min 最小化窗口, /wait 不等待
+      await Process.start(
+        'cmd',
+        ['/c', 'start', '/min', '', batchFile.path],
+        mode: ProcessStartMode.detached,
+      );
 
-      final vbsFile = File('${file.parent.path}\\v8ray_update_launcher.vbs');
-      await vbsFile.writeAsString(vbsScript, encoding: utf8);
-
-      appLogger.info('Created VBS launcher: ${vbsFile.path}');
-
-      // 使用 wscript 启动 VBScript（静默执行批处理）
-      await Process.start('wscript', [
-        vbsFile.path,
-      ], mode: ProcessStartMode.detached);
-
-      appLogger.info('Update script started, waiting for user to confirm restart');
+      appLogger.info('Update script started via cmd.exe');
 
       // 更新状态为已安装
       // 注意：不再自动退出，让 UI 显示重启对话框，用户点击后再退出

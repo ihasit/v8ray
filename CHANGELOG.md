@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2025-12-22
+
+### 🐛 修复
+
+- **修复 Windows 自动更新脚本启动问题**:
+  - 改用 cmd.exe /c start 直接启动批处理脚本
+  - 移除 VBScript 启动器（某些系统有安全限制）
+  - 使用 /min 参数最小化更新窗口
+  - 添加更多调试日志便于排查问题
+
+---
+
 ## [0.2.5] - 2025-12-22
 
 ### 🔧 改进
