@@ -812,10 +812,6 @@ impl LinuxPlatform {
             Ok(())
         };
 
-        // Set proxy mode to manual
-        run_gsettings(&["set", "org.gnome.system.proxy", "mode", "manual"])?;
-        tracing::info!("Successfully set proxy mode to manual");
-
         // Extract host and port from socks_proxy
         let socks_url = socks_proxy
             .trim_start_matches("socks5://")
@@ -830,11 +826,19 @@ impl LinuxPlatform {
         let socks_host = socks_parts[0];
         let socks_port = socks_parts[1];
 
-        // Set SOCKS proxy
+        // Set SOCKS proxy host and port first
         run_gsettings(&["set", "org.gnome.system.proxy.socks", "host", socks_host])?;
         run_gsettings(&["set", "org.gnome.system.proxy.socks", "port", socks_port])?;
+        tracing::info!("Set SOCKS proxy: {}:{}", socks_host, socks_port);
 
-        tracing::info!("Successfully set SOCKS proxy settings");
+        // Use same proxy for all protocols (avoids auto-detect behavior)
+        run_gsettings(&["set", "org.gnome.system.proxy", "use-same-proxy", "true"])?;
+        tracing::info!("Set use-same-proxy to true");
+
+        // Set proxy mode to manual (must be set last to apply all settings)
+        run_gsettings(&["set", "org.gnome.system.proxy", "mode", "manual"])?;
+        tracing::info!("Successfully set proxy mode to manual");
+
         Ok(())
     }
 
