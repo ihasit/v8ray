@@ -563,6 +563,7 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
     api.SubscriptionInfo subscription,
   ) async {
     final nameController = TextEditingController(text: subscription.name);
+    final urlController = TextEditingController(text: subscription.url);
 
     final result = await showDialog<bool>(
       context: context,
@@ -582,7 +583,7 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
               ),
               const SizedBox(height: 16),
               TextField(
-                initialValue: subscription.url,
+                controller: urlController,
                 decoration: InputDecoration(
                   labelText: l10n.subscriptionUrl,
                   border: const OutlineInputBorder(),
@@ -614,6 +615,7 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
     }
 
     nameController.dispose();
+    urlController.dispose();
   }
 
   /// 更新单个订阅
