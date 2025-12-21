@@ -221,8 +221,16 @@ class AppUpdateNotifier extends StateNotifier<UpdateInfo> {
     );
 
     try {
-      // 获取临时目录
-      final tempDir = await getTemporaryDirectory();
+      // 使用应用目录下的 TEMP 文件夹作为下载目录
+      final executablePath = Platform.resolvedExecutable;
+      final appDir = File(executablePath).parent.path;
+      final tempDir = Directory('$appDir/TEMP');
+      
+      // 创建 TEMP 目录（如果不存在）
+      if (!await tempDir.exists()) {
+        await tempDir.create(recursive: true);
+      }
+      
       final fileName = state.downloadUrl!.split('/').last;
       final savePath = '${tempDir.path}/$fileName';
 
@@ -347,7 +355,7 @@ class AppUpdateNotifier extends StateNotifier<UpdateInfo> {
       final batchScript = '''
 @echo off
 chcp 65001 > nul
-set LOGFILE=%TEMP%\\v8ray_update.log
+set LOGFILE=$appDir\\TEMP\\v8ray_update.log
 echo V8Ray Update Log > "%LOGFILE%"
 echo 更新时间: %DATE% %TIME% >> "%LOGFILE%"
 echo ======================================== >> "%LOGFILE%"

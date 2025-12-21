@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2025-12-22
+
+### 🔧 改进
+
+- **更改更新下载目录**: 从系统临时目录 `%TEMP%` 改为应用目录下的 `TEMP` 文件夹
+  - 更新日志文件也保存在 `./TEMP/v8ray_update.log`
+  - 便于用户查看和管理更新文件
+
+---
+
 ## [0.2.4] - 2025-12-22
 
 ### 🐛 修复
