@@ -344,42 +344,60 @@ class AppUpdateNotifier extends StateNotifier<UpdateInfo> {
       // 创建批处理脚本来完成更新
       // 这个脚本会在应用退出后执行，复制文件并重启应用
       // 注意：批处理脚本中的变量需要使用实际路径，不能使用 Dart 变量
-      // 使用 \${} 来避免 Dart 字符串插值，让批处理脚本使用环境变量
       final batchScript = '''
 @echo off
 chcp 65001 > nul
+set LOGFILE=%TEMP%\\v8ray_update.log
+echo V8Ray Update Log > "%LOGFILE%"
+echo 更新时间: %DATE% %TIME% >> "%LOGFILE%"
+echo ======================================== >> "%LOGFILE%"
+
 echo ========================================
 echo V8Ray 自动更新脚本
 echo ========================================
 echo.
 
-echo [1/4] 等待 V8Ray 关闭...
-timeout /t 3 /nobreak > nul
+echo [1/5] 等待 V8Ray 关闭...
+echo [1/5] 等待 V8Ray 关闭... >> "%LOGFILE%"
+timeout /t 5 /nobreak > nul
 
-echo [2/4] 更新 V8Ray 文件...
+echo [2/5] 检查源目录...
+echo 源目录: $sourceDir >> "%LOGFILE%"
+echo 目标目录: $appDir >> "%LOGFILE%"
+dir "$sourceDir" >> "%LOGFILE%" 2>&1
+
+echo [3/5] 更新 V8Ray 文件...
 echo 源目录: $sourceDir
 echo 目标目录: $appDir
-REM 使用 xcopy 复制所有文件，/E 包含空目录，/I 目标是目录，/Y 覆盖，/Q 安静模式
-REM 源目录末尾加 \\* 确保复制目录内容而不是创建嵌套目录
-xcopy /E /I /Y /Q "$sourceDir\\*" "$appDir\\"
-if errorlevel 1 (
-    echo 错误：文件复制失败！
-    echo 错误代码: %errorlevel%
+
+REM 使用 robocopy 代替 xcopy，更可靠
+REM /E = 包含空目录, /IS = 包含相同文件, /IT = 包含修改文件, /NFL /NDL /NJH /NJS = 静默模式
+robocopy "$sourceDir" "$appDir" /E /IS /IT /R:3 /W:1 >> "%LOGFILE%" 2>&1
+set ROBOCOPY_EXIT=%errorlevel%
+echo Robocopy 退出代码: %ROBOCOPY_EXIT% >> "%LOGFILE%"
+
+REM robocopy 退出代码: 0-7 表示成功, >=8 表示失败
+if %ROBOCOPY_EXIT% GEQ 8 (
+    echo 错误：文件复制失败！退出代码: %ROBOCOPY_EXIT%
+    echo 错误：文件复制失败！退出代码: %ROBOCOPY_EXIT% >> "%LOGFILE%"
+    echo 请查看日志文件: %LOGFILE%
     pause
     exit /b 1
 )
 
-echo [3/4] 清理临时文件...
-rmdir /S /Q "$tempExtractDir"
+echo [4/5] 清理临时文件...
+rmdir /S /Q "$tempExtractDir" >> "%LOGFILE%" 2>&1
 
-echo [4/4] 启动 V8Ray...
+echo [5/5] 启动 V8Ray...
+echo 启动命令: $executablePath >> "%LOGFILE%"
 start "" "$executablePath"
 
 echo.
 echo ========================================
 echo 更新完成！
 echo ========================================
-timeout /t 1 /nobreak > nul
+echo 更新完成！ >> "%LOGFILE%"
+timeout /t 2 /nobreak > nul
 
 REM 删除 VBScript 启动器和批处理脚本自身
 set SCRIPT_DIR=%~dp0
@@ -413,17 +431,17 @@ Set WshShell = Nothing
         vbsFile.path,
       ], mode: ProcessStartMode.detached);
 
-      appLogger.info('Update script started silently, exiting application');
+      appLogger.info('Update script started, waiting for user to confirm restart');
 
-      // 更新状态为已安装（实际上是准备重启）
+      // 更新状态为已安装
+      // 注意：不再自动退出，让 UI 显示重启对话框，用户点击后再退出
       state = state.copyWith(
         status: UpdateStatus.installed,
         errorMessage: null,
       );
 
-      // 延迟退出，让UI有时间显示消息
-      await Future.delayed(const Duration(seconds: 1));
-      exit(0);
+      // 不再自动退出！让 UI 层处理用户确认后再调用 exit(0)
+      // 旧代码：await Future.delayed(const Duration(seconds: 1)); exit(0);
     } catch (e, stackTrace) {
       appLogger.error('Failed to install update on Windows', e, stackTrace);
       state = state.copyWith(

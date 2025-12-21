@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2025-12-22
+
+### 🐛 修复
+
+- **修复 Windows 自动更新用户体验**:
+  - 移除自动退出，改为等待用户点击"立即重启"后再退出
+  - 使用 robocopy 代替 xcopy，更可靠地复制文件
+  - 添加更新日志文件 `%TEMP%\v8ray_update.log` 便于调试
+  - 增加等待时间确保应用完全关闭再复制文件
+
+---
+
 ## [0.2.3] - 2025-12-22
 
 ### 🐛 修复
