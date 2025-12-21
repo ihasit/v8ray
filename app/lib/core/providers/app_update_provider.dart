@@ -359,7 +359,9 @@ timeout /t 3 /nobreak > nul
 echo [2/4] 更新 V8Ray 文件...
 echo 源目录: $sourceDir
 echo 目标目录: $appDir
-xcopy /E /I /Y /Q "$sourceDir" "$appDir"
+REM 使用 xcopy 复制所有文件，/E 包含空目录，/I 目标是目录，/Y 覆盖，/Q 安静模式
+REM 源目录末尾加 \\* 确保复制目录内容而不是创建嵌套目录
+xcopy /E /I /Y /Q "$sourceDir\\*" "$appDir\\"
 if errorlevel 1 (
     echo 错误：文件复制失败！
     echo 错误代码: %errorlevel%
