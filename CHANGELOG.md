@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2025-12-21
+
+### ✨ 新增功能
+
+#### 高级模式 UI 完善 (Sprint 7)
+- **订阅管理标签页**: 完整实现订阅管理功能
+  - 订阅列表卡片式布局
+  - 添加/编辑/删除订阅
+  - 单个和批量更新订阅
+  - 订阅详情底部弹窗
+  - 搜索过滤功能
+
+#### 节点管理增强 (Sprint 8 Week 1)
+- **延迟测试**: 单个节点和批量延迟测试
+  - 颜色编码显示延迟（绿色<100ms, 橙色<300ms, 红色>300ms）
+  - 批量测试进度显示
+- **排序功能**: 按延迟/名称/协议排序
+- **过滤功能**: 按可用性过滤（全部/可用/不可用）
+
+### 🔧 改进
+
+#### 构建脚本优化
+- **post_build.bat**: 增强 Xray Core 下载
+  - 添加 PowerShell 备用下载方法
+  - 添加安装验证步骤
+  - 显示构建产物列表
+
+#### CI/CD 优化
+- **放宽 CI 检查**: 格式检查和 lint 警告不再阻塞构建
+- **编译优先**: 只要能通过编译就可以继续
+
+### 🐛 修复
+
+- 修复 Linux 系统代理设置可能不生效的问题
+- 修复 macOS UI 可能不显示的问题
+- 修复 `subscriptions_tab.dart` TextField 编译错误
+- 升级 Flutter 到 3.38.5 以支持 Visual Studio 2026
+
+### 📝 国际化
+
+- 添加订阅管理相关翻译字符串
+  - subscriptionName, subscriptionAdded, neverUpdated
+  - updating, updateComplete, saved, deleted, deleteConfirmation
+
+---
+
 ## [0.2.1] - 2025-10-15
 
 ### ✨ 改进
