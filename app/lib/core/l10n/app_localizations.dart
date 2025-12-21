@@ -1070,7 +1070,7 @@ abstract class AppLocalizations {
   /// **'Dashboard'**
   String get dashboard;
 
-  /// Nodes tab
+  /// Nodes label
   ///
   /// In en, this message translates to:
   /// **'Nodes'**
@@ -1142,7 +1142,7 @@ abstract class AppLocalizations {
   /// **'Subscription Management'**
   String get subscriptionManagement;
 
-  /// Search input hint
+  /// Search placeholder
   ///
   /// In en, this message translates to:
   /// **'Search'**
@@ -1208,7 +1208,7 @@ abstract class AppLocalizations {
   /// **'Test'**
   String get test;
 
-  /// Subscription list section title
+  /// Subscription list title
   ///
   /// In en, this message translates to:
   /// **'Subscription List'**
@@ -1477,6 +1477,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No subscriptions'**
   String get noSubscriptions;
+
+  /// Subscription name label
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription Name'**
+  String get subscriptionName;
+
+  /// Subscription added success message
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription added successfully'**
+  String get subscriptionAdded;
+
+  /// Never updated label
+  ///
+  /// In en, this message translates to:
+  /// **'Never updated'**
+  String get neverUpdated;
+
+  /// Updating status
+  ///
+  /// In en, this message translates to:
+  /// **'Updating'**
+  String get updating;
+
+  /// Update complete message
+  ///
+  /// In en, this message translates to:
+  /// **'Update complete'**
+  String get updateComplete;
+
+  /// Saved message
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get saved;
+
+  /// Deleted message
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted'**
+  String get deleted;
+
+  /// Delete confirmation message
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this item?'**
+  String get deleteConfirmation;
+
+  /// Error occurred message
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred'**
+  String get errorOccurred;
+
+  /// Add button
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
 }
 
 class _AppLocalizationsDelegate

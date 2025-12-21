@@ -705,4 +705,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get noSubscriptions => '暂无订阅';
+
+  @override
+  String get subscriptionName => '订阅名称';
+
+  @override
+  String get subscriptionAdded => '订阅添加成功';
+
+  @override
+  String get neverUpdated => '从未更新';
+
+  @override
+  String get updating => '更新中';
+
+  @override
+  String get updateComplete => '更新完成';
+
+  @override
+  String get saved => '已保存';
+
+  @override
+  String get deleted => '已删除';
+
+  @override
+  String get deleteConfirmation => '确定要删除这个项目吗？';
+
+  @override
+  String get errorOccurred => '发生错误';
+
+  @override
+  String get add => '添加';
 }

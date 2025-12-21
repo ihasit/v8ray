@@ -739,4 +739,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noSubscriptions => 'No subscriptions';
+
+  @override
+  String get subscriptionName => 'Subscription Name';
+
+  @override
+  String get subscriptionAdded => 'Subscription added successfully';
+
+  @override
+  String get neverUpdated => 'Never updated';
+
+  @override
+  String get updating => 'Updating';
+
+  @override
+  String get updateComplete => 'Update complete';
+
+  @override
+  String get saved => 'Saved';
+
+  @override
+  String get deleted => 'Deleted';
+
+  @override
+  String get deleteConfirmation => 'Are you sure you want to delete this item?';
+
+  @override
+  String get errorOccurred => 'An error occurred';
+
+  @override
+  String get add => 'Add';
 }

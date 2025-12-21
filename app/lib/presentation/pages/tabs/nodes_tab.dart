@@ -22,7 +22,14 @@ class NodesTab extends ConsumerStatefulWidget {
 class _NodesTabState extends ConsumerState<NodesTab> {
   String _searchQuery = '';
   String _filterBy = 'all';
-  String _sortBy = 'latency';
+  String _sortBy = 'name';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,45 +37,18 @@ class _NodesTabState extends ConsumerState<NodesTab> {
     final serverState = ref.watch(serverProvider);
 
     // 过滤和排序服务器列表
-    var servers = serverState.servers;
-
-    // 搜索过滤
-    if (_searchQuery.isNotEmpty) {
-      servers =
-          servers.where((server) {
-            return server.name.toLowerCase().contains(
-                  _searchQuery.toLowerCase(),
-                ) ||
-                server.address.toLowerCase().contains(
-                  _searchQuery.toLowerCase(),
-                );
-          }).toList();
-    }
-
-    // 状态过滤 - TODO(dev): 实现基于延迟的过滤
-    // if (_filterBy == 'available') {
-    //   servers = servers.where((server) => ...).toList();
-    // } else if (_filterBy == 'unavailable') {
-    //   servers = servers.where((server) => ...).toList();
-    // }
-
-    // 排序
-    if (_sortBy == 'latency') {
-      // TODO(dev): 实现基于延迟的排序
-      servers.sort((a, b) => a.name.compareTo(b.name));
-    } else if (_sortBy == 'name') {
-      servers.sort((a, b) => a.name.compareTo(b.name));
-    }
+    var servers = _getFilteredAndSortedServers(serverState);
 
     return Column(
       children: [
         // 工具栏
-        _buildToolbar(context, l10n),
+        _buildToolbar(context, l10n, serverState),
 
         // 服务器列表
         Expanded(
-          child:
-              servers.isEmpty
+          child: serverState.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : servers.isEmpty
                   ? _buildEmptyState(context, l10n)
                   : _buildServerList(context, l10n, servers, serverState),
         ),
@@ -76,8 +56,61 @@ class _NodesTabState extends ConsumerState<NodesTab> {
     );
   }
 
+  /// 获取过滤和排序后的服务器列表
+  List<api.ServerInfo> _getFilteredAndSortedServers(ServerState serverState) {
+    var servers = serverState.servers.toList();
+
+    // 搜索过滤
+    if (_searchQuery.isNotEmpty) {
+      servers = servers.where((server) {
+        return server.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            server.address.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            server.protocol.toLowerCase().contains(_searchQuery.toLowerCase());
+      }).toList();
+    }
+
+    // 状态过滤
+    if (_filterBy == 'available') {
+      servers = servers.where((server) {
+        final latency = serverState.getServerLatency(server.id);
+        return latency != null && latency > 0;
+      }).toList();
+    } else if (_filterBy == 'unavailable') {
+      servers = servers.where((server) {
+        final latency = serverState.getServerLatency(server.id);
+        return latency == null || latency <= 0;
+      }).toList();
+    }
+
+    // 排序
+    switch (_sortBy) {
+      case 'latency':
+        servers.sort((a, b) {
+          final latencyA = serverState.getServerLatency(a.id);
+          final latencyB = serverState.getServerLatency(b.id);
+          if (latencyA == null && latencyB == null) return 0;
+          if (latencyA == null) return 1;
+          if (latencyB == null) return -1;
+          return latencyA.compareTo(latencyB);
+        });
+        break;
+      case 'name':
+        servers.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case 'protocol':
+        servers.sort((a, b) => a.protocol.compareTo(b.protocol));
+        break;
+    }
+
+    return servers;
+  }
+
   /// 构建工具栏
-  Widget _buildToolbar(BuildContext context, AppLocalizations l10n) {
+  Widget _buildToolbar(
+    BuildContext context,
+    AppLocalizations l10n,
+    ServerState serverState,
+  ) {
     return Container(
       padding: EdgeInsets.all(
         Responsive(context).valueWhen(
@@ -97,39 +130,36 @@ class _NodesTabState extends ConsumerState<NodesTab> {
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: l10n.search,
-                    prefixIcon: const Icon(Icons.search),
-                    border: const OutlineInputBorder(),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+                child: SizedBox(
+                  height: 40,
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: l10n.search,
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
                     ),
+                    onChanged: (value) {
+                      setState(() => _searchQuery = value);
+                    },
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                  },
                 ),
               ),
               const SizedBox(width: 12),
-              FilledButton.icon(
-                onPressed: () {
-                  // TODO(dev): 实现测试所有延迟功能
-                },
-                icon: const Icon(Icons.speed),
-                label: Text(l10n.testLatency),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: () {
-                  // TODO: 实现添加节点功能
-                },
-                icon: const Icon(Icons.add),
-                label: Text(l10n.addNode),
-              ),
+              // 批量测试按钮（带进度显示）
+              _buildBatchTestButton(context, l10n, serverState),
             ],
           ),
           const SizedBox(height: 12),
@@ -157,9 +187,7 @@ class _NodesTabState extends ConsumerState<NodesTab> {
                 ],
                 selected: {_filterBy},
                 onSelectionChanged: (Set<String> newSelection) {
-                  setState(() {
-                    _filterBy = newSelection.first;
-                  });
+                  setState(() => _filterBy = newSelection.first);
                 },
               ),
               const Spacer(),
@@ -174,16 +202,12 @@ class _NodesTabState extends ConsumerState<NodesTab> {
                 value: _sortBy,
                 items: [
                   DropdownMenuItem(value: 'latency', child: Text(l10n.latency)),
-                  DropdownMenuItem(
-                    value: 'name',
-                    child: Text(l10n.currentNode),
-                  ),
+                  DropdownMenuItem(value: 'name', child: Text(l10n.currentNode)),
+                  const DropdownMenuItem(value: 'protocol', child: Text('Protocol')),
                 ],
                 onChanged: (value) {
                   if (value != null) {
-                    setState(() {
-                      _sortBy = value;
-                    });
+                    setState(() => _sortBy = value);
                   }
                 },
               ),
@@ -191,6 +215,39 @@ class _NodesTabState extends ConsumerState<NodesTab> {
           ),
         ],
       ),
+    );
+  }
+
+  /// 构建批量测试按钮
+  Widget _buildBatchTestButton(
+    BuildContext context,
+    AppLocalizations l10n,
+    ServerState serverState,
+  ) {
+    if (serverState.isBatchTesting) {
+      // 显示进度
+      return SizedBox(
+        width: 150,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            LinearProgressIndicator(value: serverState.batchTestProgress),
+            const SizedBox(height: 4),
+            Text(
+              '${(serverState.batchTestProgress * 100).toInt()}%',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return FilledButton.icon(
+      onPressed: serverState.servers.isEmpty
+          ? null
+          : () => ref.read(serverProvider.notifier).testAllServersLatency(),
+      icon: const Icon(Icons.speed),
+      label: Text(l10n.testLatency),
     );
   }
 
@@ -243,7 +300,7 @@ class _NodesTabState extends ConsumerState<NodesTab> {
         final server = servers[index];
         final isSelected = server.id == serverState.selectedServerId;
 
-        return _buildServerCard(context, l10n, server, isSelected);
+        return _buildServerCard(context, l10n, server, isSelected, serverState);
       },
     );
   }
@@ -254,10 +311,13 @@ class _NodesTabState extends ConsumerState<NodesTab> {
     AppLocalizations l10n,
     api.ServerInfo server,
     bool isSelected,
+    ServerState serverState,
   ) {
-    // TODO(dev): 添加延迟显示功能
-    const hasLatency = false;
-    final latencyColor = Theme.of(context).colorScheme.onSurfaceVariant;
+    final latency = serverState.getServerLatency(server.id);
+    final isTesting = serverState.isServerTesting(server.id);
+    final hasLatency = latency != null && latency > 0;
+    final latencyColor = hasLatency ? _getLatencyColor(context, latency) : 
+        Theme.of(context).colorScheme.onSurfaceVariant;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -276,8 +336,7 @@ class _NodesTabState extends ConsumerState<NodesTab> {
                 isSelected
                     ? Icons.radio_button_checked
                     : Icons.radio_button_unchecked,
-                color:
-                    isSelected ? Theme.of(context).colorScheme.primary : null,
+                color: isSelected ? Theme.of(context).colorScheme.primary : null,
               ),
               const SizedBox(width: 16),
 
@@ -328,18 +387,24 @@ class _NodesTabState extends ConsumerState<NodesTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      '∞',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: latencyColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    isTesting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            hasLatency ? '${latency}ms' : '∞',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: latencyColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                     const SizedBox(height: 4),
                     LinearProgressIndicator(
-                      value: 0,
+                      value: hasLatency ? _getLatencyProgress(latency) : 0,
                       backgroundColor:
-                          Theme.of(context).colorScheme.surfaceVariant,
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
                       color: latencyColor,
                     ),
                   ],
@@ -350,58 +415,80 @@ class _NodesTabState extends ConsumerState<NodesTab> {
               // 操作按钮
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert),
-                onSelected: (value) {
-                  switch (value) {
-                    case 'test':
-                      // TODO(dev): 实现测试延迟功能
-                      break;
-                    case 'edit':
-                      // TODO(dev): 实现编辑功能
-                      break;
-                    case 'delete':
-                      // TODO(dev): 实现删除功能
-                      break;
-                  }
-                },
-                itemBuilder:
-                    (context) => [
-                      PopupMenuItem(
-                        value: 'test',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.speed, size: 20),
-                            const SizedBox(width: 12),
-                            Text(l10n.test),
-                          ],
+                onSelected: (value) => _handleServerAction(context, l10n, server, value),
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'test',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.speed, size: 20),
+                        const SizedBox(width: 12),
+                        Text(l10n.test),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.edit, size: 20),
+                        const SizedBox(width: 12),
+                        Text(l10n.edit),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.delete,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.error,
                         ),
-                      ),
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.edit, size: 20),
-                            const SizedBox(width: 12),
-                            Text(l10n.edit),
-                          ],
+                        const SizedBox(width: 12),
+                        Text(
+                          l10n.delete,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
                         ),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.delete, size: 20),
-                            const SizedBox(width: 12),
-                            Text(l10n.delete),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// 处理服务器操作
+  void _handleServerAction(
+    BuildContext context,
+    AppLocalizations l10n,
+    api.ServerInfo server,
+    String action,
+  ) {
+    switch (action) {
+      case 'test':
+        ref.read(serverProvider.notifier).testServerLatency(server.id);
+        break;
+      case 'edit':
+        // TODO: 实现编辑功能
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Edit feature coming soon')),
+        );
+        break;
+      case 'delete':
+        // TODO: 实现删除功能
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Delete feature coming soon')),
+        );
+        break;
+    }
   }
 
   /// 获取延迟颜色
@@ -417,10 +504,10 @@ class _NodesTabState extends ConsumerState<NodesTab> {
 
   /// 获取延迟进度值
   double _getLatencyProgress(int latency) {
-    if (latency < 100) return 0.8;
-    if (latency < 200) return 0.6;
-    if (latency < 300) return 0.4;
-    if (latency < 500) return 0.2;
+    if (latency < 100) return 0.9;
+    if (latency < 200) return 0.7;
+    if (latency < 300) return 0.5;
+    if (latency < 500) return 0.3;
     return 0.1;
   }
 }

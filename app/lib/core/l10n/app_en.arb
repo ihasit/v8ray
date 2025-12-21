@@ -1184,6 +1184,81 @@
   "noSubscriptions": "No subscriptions",
   "@noSubscriptions": {
     "description": "No subscriptions message"
+  },
+
+  "subscriptionName": "Subscription Name",
+  "@subscriptionName": {
+    "description": "Subscription name label"
+  },
+
+  "subscriptionAdded": "Subscription added successfully",
+  "@subscriptionAdded": {
+    "description": "Subscription added success message"
+  },
+
+  "neverUpdated": "Never updated",
+  "@neverUpdated": {
+    "description": "Never updated label"
+  },
+
+  "updating": "Updating",
+  "@updating": {
+    "description": "Updating status"
+  },
+
+  "updateComplete": "Update complete",
+  "@updateComplete": {
+    "description": "Update complete message"
+  },
+
+  "saved": "Saved",
+  "@saved": {
+    "description": "Saved message"
+  },
+
+  "deleted": "Deleted",
+  "@deleted": {
+    "description": "Deleted message"
+  },
+
+  "deleteConfirmation": "Are you sure you want to delete this item?",
+  "@deleteConfirmation": {
+    "description": "Delete confirmation message"
+  },
+
+  "errorOccurred": "An error occurred",
+  "@errorOccurred": {
+    "description": "Error occurred message"
+  },
+
+  "add": "Add",
+  "@add": {
+    "description": "Add button"
+  },
+
+  "edit": "Edit",
+  "@edit": {
+    "description": "Edit button"
+  },
+
+  "delete": "Delete",
+  "@delete": {
+    "description": "Delete button"
+  },
+
+  "search": "Search",
+  "@search": {
+    "description": "Search placeholder"
+  },
+
+  "nodes": "Nodes",
+  "@nodes": {
+    "description": "Nodes label"
+  },
+
+  "subscriptionList": "Subscription List",
+  "@subscriptionList": {
+    "description": "Subscription list title"
   }
 }
 
