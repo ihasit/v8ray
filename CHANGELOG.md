@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.11] - 2025-12-22
+
+### 🔧 调试
+
+- **使用 print() 输出调试信息到终端**:
+  - 确保库加载调试日志输出到控制台
+  - 显示可执行文件路径、库路径尝试和加载结果
+
+---
+
 ## [0.2.10] - 2025-12-22
 
 ### 🐛 修复

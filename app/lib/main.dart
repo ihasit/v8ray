@@ -282,8 +282,11 @@ ExternalLibrary? _createExternalLibrary() {
     final executablePath = Platform.resolvedExecutable;
     final executableDir = File(executablePath).parent.path;
 
-    appLogger.info('Executable path: $executablePath');
-    appLogger.info('Executable dir: $executableDir');
+    // 使用 print 确保输出到终端
+    print('[V8Ray] ====== Library Loading Debug ======');
+    print('[V8Ray] Executable path: $executablePath');
+    print('[V8Ray] Executable dir: $executableDir');
+    print('[V8Ray] Platform: ${Platform.operatingSystem}');
 
     // 确定库文件名
     String libraryName;
@@ -294,6 +297,7 @@ ExternalLibrary? _createExternalLibrary() {
     } else {
       libraryName = 'libv8ray_core.so';
     }
+    print('[V8Ray] Library name: $libraryName');
 
     // 收集所有可能的库路径
     final possiblePaths = <String>[];
@@ -323,37 +327,42 @@ ExternalLibrary? _createExternalLibrary() {
         const bool.fromEnvironment('dart.vm.product') ? 'release' : 'debug';
     possiblePaths.add('$executableDir/../../core/target/$buildMode/$libraryName');
 
+    print('[V8Ray] Possible paths to try:');
+    for (var i = 0; i < possiblePaths.length; i++) {
+      print('[V8Ray]   ${i + 1}. ${possiblePaths[i]}');
+    }
+
     // 尝试每个路径
     for (final path in possiblePaths) {
-      appLogger.info('Trying library path: $path');
+      print('[V8Ray] Trying: $path');
       final file = File(path);
       final exists = file.existsSync();
-      appLogger.info('  File exists: $exists');
+      print('[V8Ray]   exists: $exists');
       
       if (exists) {
-        appLogger.info('Found Rust library at: $path');
+        print('[V8Ray] Found library at: $path');
         try {
           // 先尝试用 dart:ffi 直接加载，看看有什么错误
+          print('[V8Ray] Attempting DynamicLibrary.open...');
           final lib = DynamicLibrary.open(path);
-          appLogger.info('DynamicLibrary.open succeeded');
+          print('[V8Ray] DynamicLibrary.open succeeded!');
           lib.close();
         } catch (e) {
-          appLogger.warning('DynamicLibrary.open failed: $e');
+          print('[V8Ray] DynamicLibrary.open failed: $e');
           // 继续尝试 ExternalLibrary.open
         }
+        print('[V8Ray] Returning ExternalLibrary.open($path)');
         return ExternalLibrary.open(path);
       }
     }
 
     // 如果都找不到，记录所有尝试过的路径
-    appLogger.warning(
-      'Rust library not found in any of the expected locations:\n'
-      '${possiblePaths.map((p) => '  - $p').join('\n')}\n'
-      'Will try default loader...',
-    );
+    print('[V8Ray] ERROR: Library not found in any location!');
+    print('[V8Ray] Will try default FRB loader (framework format)...');
     return null;
   } catch (e, stackTrace) {
-    appLogger.error('Failed to create external library loader', e, stackTrace);
+    print('[V8Ray] EXCEPTION in _createExternalLibrary: $e');
+    print('[V8Ray] Stack trace: $stackTrace');
     return null;
   }
 }
