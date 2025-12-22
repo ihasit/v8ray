@@ -282,6 +282,9 @@ ExternalLibrary? _createExternalLibrary() {
     final executablePath = Platform.resolvedExecutable;
     final executableDir = File(executablePath).parent.path;
 
+    appLogger.info('Executable path: $executablePath');
+    appLogger.info('Executable dir: $executableDir');
+
     // 确定库文件名
     String libraryName;
     if (Platform.isWindows) {
@@ -292,28 +295,60 @@ ExternalLibrary? _createExternalLibrary() {
       libraryName = 'libv8ray_core.so';
     }
 
-    // 尝试从应用程序目录加载（发布模式）
-    final releaseLibPath = '$executableDir/$libraryName';
-    if (File(releaseLibPath).existsSync()) {
-      appLogger.info('Loading Rust library from: $releaseLibPath');
-      return ExternalLibrary.open(releaseLibPath);
+    // 收集所有可能的库路径
+    final possiblePaths = <String>[];
+
+    if (Platform.isMacOS) {
+      // macOS: 可执行文件在 v8ray.app/Contents/MacOS/v8ray
+      // 动态库也在 v8ray.app/Contents/MacOS/libv8ray_core.dylib
+      possiblePaths.add('$executableDir/$libraryName');
+      
+      // 也尝试 Frameworks 目录
+      possiblePaths.add('$executableDir/../Frameworks/$libraryName');
+      
+      // 尝试从 .app 包的根目录计算路径
+      if (executablePath.contains('.app/Contents/MacOS/')) {
+        final appIndex = executablePath.indexOf('.app/Contents/MacOS/');
+        final appBundlePath = executablePath.substring(0, appIndex + 4);
+        possiblePaths.add('$appBundlePath/Contents/MacOS/$libraryName');
+        possiblePaths.add('$appBundlePath/Contents/Frameworks/$libraryName');
+      }
+    } else {
+      // Windows/Linux: 直接从可执行文件目录加载
+      possiblePaths.add('$executableDir/$libraryName');
     }
 
-    // 尝试从开发目录加载（开发模式）
+    // 开发模式路径
     final buildMode =
         const bool.fromEnvironment('dart.vm.product') ? 'release' : 'debug';
-    final devLibPath =
-        '$executableDir/../../core/target/$buildMode/$libraryName';
-    if (File(devLibPath).existsSync()) {
-      appLogger.info('Loading Rust library from: $devLibPath');
-      return ExternalLibrary.open(devLibPath);
+    possiblePaths.add('$executableDir/../../core/target/$buildMode/$libraryName');
+
+    // 尝试每个路径
+    for (final path in possiblePaths) {
+      appLogger.info('Trying library path: $path');
+      final file = File(path);
+      final exists = file.existsSync();
+      appLogger.info('  File exists: $exists');
+      
+      if (exists) {
+        appLogger.info('Found Rust library at: $path');
+        try {
+          // 先尝试用 dart:ffi 直接加载，看看有什么错误
+          final lib = DynamicLibrary.open(path);
+          appLogger.info('DynamicLibrary.open succeeded');
+          lib.close();
+        } catch (e) {
+          appLogger.warning('DynamicLibrary.open failed: $e');
+          // 继续尝试 ExternalLibrary.open
+        }
+        return ExternalLibrary.open(path);
+      }
     }
 
-    // 如果都找不到，返回 null 使用默认加载器
+    // 如果都找不到，记录所有尝试过的路径
     appLogger.warning(
-      'Rust library not found in expected locations:\n'
-      '  - Release: $releaseLibPath\n'
-      '  - Dev: $devLibPath\n'
+      'Rust library not found in any of the expected locations:\n'
+      '${possiblePaths.map((p) => '  - $p').join('\n')}\n'
       'Will try default loader...',
     );
     return null;
