@@ -168,12 +168,20 @@ jobs:
       run: |
         mkdir -p artifacts
         if [ "${{ inputs.build_type }}" = "release" ]; then
-          cp -r app/build/macos/Build/Products/Release/* artifacts/
+          # 复制 Flutter 构建输出
+          cp -r app/build/macos/Build/Products/Release/v8ray.app artifacts/
+          # 复制 Rust 动态库到应用的 MacOS 目录
+          cp core/target/${{ matrix.rust-target }}/release/libv8ray_core.dylib artifacts/v8ray.app/Contents/MacOS/
+          # 复制 v8ray-core 可执行文件
           cp core/target/${{ matrix.rust-target }}/release/v8ray-core artifacts/
         else
-          cp -r app/build/macos/Build/Products/Debug/* artifacts/
+          cp -r app/build/macos/Build/Products/Debug/v8ray.app artifacts/
+          cp core/target/${{ matrix.rust-target }}/debug/libv8ray_core.dylib artifacts/v8ray.app/Contents/MacOS/
           cp core/target/${{ matrix.rust-target }}/debug/v8ray-core artifacts/
         fi
+        # 验证动态库已复制
+        echo "Contents of v8ray.app/Contents/MacOS:"
+        ls -la artifacts/v8ray.app/Contents/MacOS/
         tar -czf v8ray-macos-${{ inputs.build_type }}.tar.gz -C artifacts .
       shell: bash
 

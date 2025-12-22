@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2025-12-22
+
+### 🐛 修复
+
+- **修复 macOS Rust 动态库加载失败**:
+  - 将 `libv8ray_core.dylib` 正确打包到 `v8ray.app/Contents/MacOS/` 目录
+  - 修复 CI/CD 构建流程中 macOS 打包步骤
+
+- **修复 Linux 系统代理端口混淆问题**:
+  - 设置 `use-same-proxy=false` 避免 GNOME 使用默认的 HTTP 端口 8080
+  - 清除 HTTP/HTTPS/FTP 代理设置，只保留 SOCKS 代理
+
+- **修复 macOS 系统代理启用问题**:
+  - 设置 SOCKS 代理后正确启用它 (`-setsocksfirewallproxystate on`)
+
+---
+
 ## [0.2.7] - 2025-12-22
 
 ### 🐛 修复

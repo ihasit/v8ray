@@ -95,8 +95,14 @@ jobs:
     - name: Package release (macOS)
       if: matrix.os == 'macos-latest'
       run: |
+        # 复制 Rust 动态库到应用的 MacOS 目录
+        cp core/target/release/libv8ray_core.dylib app/build/macos/Build/Products/Release/v8ray.app/Contents/MacOS/
+        # 验证动态库已复制
+        echo "Contents of v8ray.app/Contents/MacOS:"
+        ls -la app/build/macos/Build/Products/Release/v8ray.app/Contents/MacOS/
+        # 打包
         cd app/build/macos/Build/Products/Release
-        tar -czf ${{ github.workspace }}/${{ matrix.asset-name }}.tar.gz .
+        tar -czf ${{ github.workspace }}/${{ matrix.asset-name }}.tar.gz v8ray.app
 
     - name: Upload Release
       uses: softprops/action-gh-release@v1

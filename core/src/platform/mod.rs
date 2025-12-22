@@ -544,7 +544,7 @@ impl PlatformOps for MacOSPlatform {
         for service in services {
             tracing::info!("Setting SOCKS proxy for network service: {}", service);
 
-            // Set SOCKS proxy
+            // Set SOCKS proxy host and port
             let output = Command::new("networksetup")
                 .args([
                     "-setsocksfirewallproxy",
@@ -567,9 +567,28 @@ impl PlatformOps for MacOSPlatform {
                     String::from_utf8_lossy(&output.stderr)
                 );
             }
+
+            // Enable SOCKS proxy (important: must be enabled after setting)
+            let enable_output = Command::new("networksetup")
+                .args(["-setsocksfirewallproxystate", &service, "on"])
+                .output()
+                .map_err(|e| {
+                    crate::error::PlatformError::SystemProxy(format!(
+                        "Failed to enable SOCKS proxy: {}",
+                        e
+                    ))
+                })?;
+
+            if !enable_output.status.success() {
+                tracing::warn!(
+                    "Failed to enable SOCKS proxy for {}: {}",
+                    service,
+                    String::from_utf8_lossy(&enable_output.stderr)
+                );
+            }
         }
 
-        tracing::info!("macOS system proxy (SOCKS) set successfully");
+        tracing::info!("macOS system proxy (SOCKS) set and enabled successfully");
         Ok(())
     }
 
@@ -826,14 +845,24 @@ impl LinuxPlatform {
         let socks_host = socks_parts[0];
         let socks_port = socks_parts[1];
 
-        // Set SOCKS proxy host and port first
+        // 禁用 use-same-proxy，只使用 SOCKS 代理
+        // 注意：use-same-proxy=true 会导致 HTTP 代理使用不同的端口（默认 8080）
+        run_gsettings(&["set", "org.gnome.system.proxy", "use-same-proxy", "false"])?;
+        tracing::info!("Set use-same-proxy to false");
+
+        // Set SOCKS proxy host and port
         run_gsettings(&["set", "org.gnome.system.proxy.socks", "host", socks_host])?;
         run_gsettings(&["set", "org.gnome.system.proxy.socks", "port", socks_port])?;
         tracing::info!("Set SOCKS proxy: {}:{}", socks_host, socks_port);
 
-        // Use same proxy for all protocols (avoids auto-detect behavior)
-        run_gsettings(&["set", "org.gnome.system.proxy", "use-same-proxy", "true"])?;
-        tracing::info!("Set use-same-proxy to true");
+        // 清除 HTTP/HTTPS 代理设置，避免端口混淆
+        run_gsettings(&["set", "org.gnome.system.proxy.http", "host", ""])?;
+        run_gsettings(&["set", "org.gnome.system.proxy.http", "port", "0"])?;
+        run_gsettings(&["set", "org.gnome.system.proxy.https", "host", ""])?;
+        run_gsettings(&["set", "org.gnome.system.proxy.https", "port", "0"])?;
+        run_gsettings(&["set", "org.gnome.system.proxy.ftp", "host", ""])?;
+        run_gsettings(&["set", "org.gnome.system.proxy.ftp", "port", "0"])?;
+        tracing::info!("Cleared HTTP/HTTPS/FTP proxy settings");
 
         // Set proxy mode to manual (must be set last to apply all settings)
         run_gsettings(&["set", "org.gnome.system.proxy", "mode", "manual"])?;
