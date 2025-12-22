@@ -95,14 +95,43 @@ jobs:
     - name: Package release (macOS)
       if: matrix.os == 'macos-latest'
       run: |
+        echo "=== Debugging macOS Package ==="
+        echo "Checking Flutter build output..."
+        ls -la app/build/macos/Build/Products/Release/
+        
+        echo ""
+        echo "Checking v8ray.app structure..."
+        ls -la app/build/macos/Build/Products/Release/v8ray.app/ || echo "v8ray.app not found!"
+        ls -la app/build/macos/Build/Products/Release/v8ray.app/Contents/ || echo "Contents not found!"
+        ls -la app/build/macos/Build/Products/Release/v8ray.app/Contents/MacOS/ || echo "MacOS not found!"
+        
+        echo ""
+        echo "Checking Rust library..."
+        ls -la core/target/release/ | grep libv8ray || echo "Rust lib not in target/release/"
+        
         # 复制 Rust 动态库到应用的 MacOS 目录
-        cp core/target/release/libv8ray_core.dylib app/build/macos/Build/Products/Release/v8ray.app/Contents/MacOS/
+        if [ -f "core/target/release/libv8ray_core.dylib" ]; then
+          echo "Copying libv8ray_core.dylib..."
+          cp core/target/release/libv8ray_core.dylib app/build/macos/Build/Products/Release/v8ray.app/Contents/MacOS/
+        else
+          echo "ERROR: libv8ray_core.dylib not found!"
+          exit 1
+        fi
+        
         # 验证动态库已复制
-        echo "Contents of v8ray.app/Contents/MacOS:"
+        echo ""
+        echo "Final contents of v8ray.app/Contents/MacOS:"
         ls -la app/build/macos/Build/Products/Release/v8ray.app/Contents/MacOS/
-        # 打包
+        
+        # 打包 - 确保使用正确的格式保留目录结构
+        echo ""
+        echo "Creating tar.gz archive..."
         cd app/build/macos/Build/Products/Release
-        tar -czf ${{ github.workspace }}/${{ matrix.asset-name }}.tar.gz v8ray.app
+        tar -cvzf ${{ github.workspace }}/${{ matrix.asset-name }}.tar.gz v8ray.app
+        
+        echo ""
+        echo "Archive created, checking content:"
+        tar -tzf ${{ github.workspace }}/${{ matrix.asset-name }}.tar.gz | head -20
 
     - name: Upload Release
       uses: softprops/action-gh-release@v1

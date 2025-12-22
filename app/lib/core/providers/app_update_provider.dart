@@ -544,48 +544,105 @@ del "%~f0"
   Future<void> _installOnMacOS(File file) async {
     try {
       // 获取当前可执行文件的目录
+      // macOS 路径: /path/to/v8ray.app/Contents/MacOS/v8ray
       final executablePath = Platform.resolvedExecutable;
-      final appDir = File(executablePath).parent.path;
-
-      appLogger.info('Extracting update to: $appDir');
-      appLogger.info('Archive file: ${file.path}');
+      
       appLogger.info('Executable path: $executablePath');
 
-      // 解压 tar.gz 文件到应用目录
-      // macOS 的 tar 通常支持直接覆盖
-      final result = await Process.run('tar', [
+      // 找到 .app 包的位置
+      // 从 /path/to/v8ray.app/Contents/MacOS/v8ray 提取 /path/to/v8ray.app
+      String? appBundlePath;
+      if (executablePath.contains('.app/Contents/MacOS/')) {
+        final appIndex = executablePath.indexOf('.app/Contents/MacOS/');
+        appBundlePath = executablePath.substring(0, appIndex + 4); // +4 for ".app"
+      }
+
+      if (appBundlePath == null) {
+        throw Exception('Could not determine .app bundle path from: $executablePath');
+      }
+
+      // 获取 .app 所在的目录（如 /Applications 或 ~/Downloads）
+      final appParentDir = File(appBundlePath).parent.path;
+      
+      appLogger.info('App bundle path: $appBundlePath');
+      appLogger.info('App parent directory: $appParentDir');
+      appLogger.info('Archive file: ${file.path}');
+
+      // 解压到临时目录
+      final tempExtractDir = '${file.parent.path}/v8ray_update_temp';
+      final tempDir = Directory(tempExtractDir);
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+      await tempDir.create();
+
+      appLogger.info('Extracting to temp directory: $tempExtractDir');
+
+      // 解压 tar.gz 文件到临时目录
+      final extractResult = await Process.run('tar', [
         '-xzf',
         file.path,
         '-C',
-        appDir,
+        tempExtractDir,
       ]);
 
-      if (result.exitCode != 0) {
-        throw Exception('Failed to extract archive: ${result.stderr}');
+      if (extractResult.exitCode != 0) {
+        throw Exception('Failed to extract archive: ${extractResult.stderr}');
       }
 
-      appLogger.info('Update extracted successfully');
-      appLogger.info('stdout: ${result.stdout}');
+      appLogger.info('Archive extracted successfully');
 
-      // 确保可执行文件有执行权限
-      final newExecutable = File(executablePath);
-      if (await newExecutable.exists()) {
-        final chmodResult = await Process.run('chmod', ['+x', executablePath]);
-        if (chmodResult.exitCode == 0) {
-          appLogger.info('Set executable permission for: $executablePath');
-        } else {
-          appLogger.warning(
-            'Failed to set executable permission: ${chmodResult.stderr}',
-          );
+      // 找到解压后的 .app 包
+      String? newAppPath;
+      final tempDirList = await tempDir.list().toList();
+      for (var entity in tempDirList) {
+        if (entity.path.endsWith('.app')) {
+          newAppPath = entity.path;
+          break;
         }
       }
 
-      // 同时确保 bin 目录下的所有文件都有执行权限
-      final binDir = Directory('$appDir/bin');
-      if (await binDir.exists()) {
-        await Process.run('chmod', ['+x', '$appDir/bin/*']);
-        appLogger.info('Set executable permissions for bin directory');
+      if (newAppPath == null) {
+        // 如果没有找到 .app，可能打包结构不同，尝试直接使用临时目录
+        appLogger.warning('No .app found in extracted files, checking directory structure');
+        throw Exception('No .app bundle found in update package');
       }
+
+      appLogger.info('Found new app bundle: $newAppPath');
+
+      // 备份旧的 .app
+      final backupPath = '$appBundlePath.backup';
+      final backupDir = Directory(backupPath);
+      if (await backupDir.exists()) {
+        await backupDir.delete(recursive: true);
+      }
+
+      appLogger.info('Moving old app to backup: $backupPath');
+      
+      // 使用 mv 命令移动旧应用到备份
+      final backupResult = await Process.run('mv', [appBundlePath, backupPath]);
+      if (backupResult.exitCode != 0) {
+        throw Exception('Failed to backup old app: ${backupResult.stderr}');
+      }
+
+      // 移动新的 .app 到原位置
+      appLogger.info('Moving new app to: $appBundlePath');
+      final moveResult = await Process.run('mv', [newAppPath!, appBundlePath]);
+      if (moveResult.exitCode != 0) {
+        // 恢复备份
+        await Process.run('mv', [backupPath, appBundlePath]);
+        throw Exception('Failed to install new app: ${moveResult.stderr}');
+      }
+
+      // 删除备份和临时目录
+      appLogger.info('Cleaning up...');
+      await Process.run('rm', ['-rf', backupPath]);
+      await Process.run('rm', ['-rf', tempExtractDir]);
+
+      // 确保可执行文件有执行权限
+      final newExecutablePath = '$appBundlePath/Contents/MacOS/v8ray';
+      await Process.run('chmod', ['+x', newExecutablePath]);
+      appLogger.info('Set executable permission for: $newExecutablePath');
 
       // 更新成功，提示用户重启
       state = state.copyWith(
@@ -594,7 +651,7 @@ del "%~f0"
       );
 
       appLogger.info(
-        'Update installed successfully, please restart the application',
+        'macOS update installed successfully, please restart the application',
       );
     } catch (e, stackTrace) {
       appLogger.error('Failed to install update on macOS', e, stackTrace);

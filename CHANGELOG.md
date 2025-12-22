@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9] - 2025-12-22
+
+### 🐛 修复
+
+- **修复 macOS CI/CD 打包问题**:
+  - 添加详细调试日志验证 .app 包结构
+  - 确保 tar 正确打包 v8ray.app 目录
+  - 验证 libv8ray_core.dylib 复制成功
+
+---
+
 ## [0.2.8] - 2025-12-22
 
 ### 🐛 修复
@@ -19,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **修复 macOS 系统代理启用问题**:
   - 设置 SOCKS 代理后正确启用它 (`-setsocksfirewallproxystate on`)
+
+- **修复 macOS 自动更新路径错误**:
+  - 正确识别 `.app` 包路径
+  - 解压到临时目录，备份旧应用，替换为新应用
+  - 修复更新后无法正常启动的问题
 
 ---
 
