@@ -2,7 +2,7 @@
 
 ## 1. 本次变更概述
 
-当前发布 **v0.2.13**。在 v0.2.12 数据库与 tag 自动构建之上，锁定 Flutter Rust Bridge 2.11.1，并向 GitHub Release 增加 macOS arm64 产物。
+当前发布 **v0.2.14**。v0.2.13 的 macOS arm64 CI 在 Pre-build Rust 失败，Release 未包含 `v8ray-macos-arm64.tar.gz`。改为在 `macos-latest` 上本机编译并校验 arm64。
 
 ## 2. 功能需求
 
@@ -46,15 +46,16 @@
 
 #### GitHub 自动构建与 macOS arm64 发布
 
-- **现状/问题**：需要 GitHub 自动构建；需要增加 macOS arm64 发布包。
+- **现状/问题**：需要 GitHub 自动构建；需要增加 macOS arm64 发布包。v0.2.13 Release 只有 `v8ray-linux-x64.tar.gz`，macOS arm64 任务在 Pre-build Rust library 失败。
 - **目标行为**：推送 tag 触发构建并发布 GitHub Release；Release 包含 `v8ray-macos-arm64.tar.gz`；Apple Silicon 自动更新匹配 `macos-arm64`。
-- **约束与边界**：tag 触发不能被路径过滤掉；macOS arm64 使用 `aarch64-apple-darwin` 并校验架构。
-- **验收标准**：`git push origin <tag>` 后 Build workflow 运行；Release 可下载 Linux x64、Windows x64、macOS arm64。
+- **约束与边界**：tag 触发不能被路径过滤掉。`macos-latest` 已是 Apple Silicon，不得再对 Rust 使用 `--target aarch64-apple-darwin`（会按交叉编译链接失败）；应本机 `cargo build --release --lib`，打包时用 `lipo` 校验 `arm64`。
+- **验收标准**：`git push origin <tag>` 后 Build workflow 的 macOS arm64 任务成功；Release 可下载 Linux x64、Windows x64、macOS arm64。
+- **证据**：![v0.2.13 Release 缺少 macOS 包](assets/20260911-150200-macos-arm64-ci-fix/release-missing-macos-arm64.png)
 
 #### 版本升级、提交、打 tag、推送
 
-- **目标行为**：版本升级到 `0.2.13`，提交代码，打 tag 并推送到远程。
-- **验收标准**：远程 `main` 含本次提交，存在 tag `v0.2.13`。
+- **目标行为**：版本升级到 `0.2.14`，提交代码，打 tag 并推送到远程。
+- **验收标准**：远程 `main` 含本次提交，存在 tag `v0.2.14`。
 
 ## 3. UI 展示与视觉要求
 
@@ -65,14 +66,16 @@
 - 不把本机构建生成的 `core/bin/.xray_download_info` 作为发布内容提交。
 - 不提交 `.specstory/`、`.cursorindexingignore` 等本地工具文件。
 - 本轮不把 FRB 升级到 2.13.0，只钉死 2.11.1。
+- 不对 `macos-latest` 上的 Rust 使用 `--target aarch64-apple-darwin`。
 
 ## 5. 验收标准
 
 - macOS 启动不再因 SQLite code 14 或 FRB 2.11.1/2.13.0 不一致弹出初始化失败。
-- 推送 tag 触发 GitHub Build，发布包含 `v8ray-macos-arm64.tar.gz` 的 GitHub Release。
-- 版本号为 `0.2.13`，tag `v0.2.13` 已推送。
+- 推送 tag 触发 GitHub Build，macOS arm64 任务成功，Release 包含 `v8ray-macos-arm64.tar.gz`。
+- 版本号为 `0.2.14`，tag `v0.2.14` 已推送。
 
 ## 6. 参考截图
 
 - ![macOS 初始化失败 SQLite code 14](assets/20260911-140100-macos-db-and-ci/macos-init-db-cantopen.png)
 - ![FRB 版本不一致](assets/20260911-144000-frb-pin-macos-arm64/macos-init-frb-version-mismatch.png)
+- ![v0.2.13 Release 缺少 macOS 包](assets/20260911-150200-macos-arm64-ci-fix/release-missing-macos-arm64.png)

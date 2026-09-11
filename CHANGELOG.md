@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.14] - 2026-09-11
+
+### 🐛 修复
+
+- **修复 macOS arm64 GitHub Actions 构建失败**:
+  - `macos-latest` 已是 Apple Silicon，不再使用 `--target aarch64-apple-darwin`（会按交叉编译链接失败）
+  - 改为本机 `cargo build --release --lib`，打包时仍用 `lipo` 校验 `arm64`
+
+---
+
 ## [0.2.13] - 2026-09-11
 
 ### 🐛 修复

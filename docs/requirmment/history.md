@@ -1,5 +1,16 @@
 # 提交需求历史
 
+## 2026-09-11 15:02 · 修复 macOS arm64 CI 本机构建
+
+- **提交范围**：`macos-latest` 改为本机 cargo 构建，去掉 `--target aarch64-apple-darwin`；打包仍用 `lipo` 校验 arm64；版本升级到 `0.2.14`。
+- **用户需求**：
+  - v0.2.13 新修改的 arm64 mac 打包失败，Release 只有 Linux 包。
+  - 升级版本、提交、打 tag、推送。
+- **需求修正/撤销**：不再对 macOS arm64 使用显式 Rust `--target`。
+- **验收结果**：本地 `cargo build --lib --target aarch64-apple-darwin`（debug）可通过；CI 失败发生在 Pre-build Rust library。修复后的 GitHub Actions 待推送 tag 后确认。
+- **关联图片**：![v0.2.13 Release 缺少 macOS 包](assets/20260911-150200-macos-arm64-ci-fix/release-missing-macos-arm64.png)
+- **代码提交**：待提交
+
 ## 2026-09-11 14:40 · 锁定 FRB 2.11.1 并发布 macOS arm64
 
 - **提交范围**：钉死 Flutter Rust Bridge 2.11.1；GitHub Release 增加 `v8ray-macos-arm64`；Apple Silicon 自动更新匹配 arm64；版本升级到 `0.2.13`。

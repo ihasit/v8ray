@@ -1,7 +1,7 @@
 name: Build
 
 # 自动构建桌面端可运行包：
-# - 推送 tag（推荐 v0.2.13）：Release 构建，上传 Artifact，并发布 GitHub Release
+# - 推送 tag（推荐 v0.2.14）：Release 构建，上传 Artifact，并发布 GitHub Release
 # - push 到 main/master/develop：Release 构建并上传 Artifact
 # - Pull Request：同样构建，便于下载验证
 # - 手动触发：可选 debug / release
@@ -71,7 +71,7 @@ jobs:
           - name: macOS arm64
             os: macos-latest
             platform: macos
-            rust_target: aarch64-apple-darwin
+            rust_target: ''
             arch: arm64
             asset_name: v8ray-macos-arm64
             asset_ext: tar.gz

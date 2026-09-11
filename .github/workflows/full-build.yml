@@ -44,7 +44,7 @@ jobs:
             flutter-target: windows
           - platform: macos
             os: macos-latest
-            rust-target: aarch64-apple-darwin
+            rust-target: ''
             flutter-target: macos
           - platform: android
             os: ubuntu-latest
@@ -115,8 +115,8 @@ jobs:
         if [ "${{ inputs.build_type }}" = "release" ]; then
           BUILD_FLAG="--release"
         fi
-        # Android/iOS/macOS arm64 使用显式 --target；Linux/Windows 走默认目录供 Flutter CMake 读取
-        if [ "${{ matrix.platform }}" = "android" ] || [ "${{ matrix.platform }}" = "ios" ] || [ "${{ matrix.platform }}" = "macos" ]; then
+        # 仅 Android/iOS 交叉编译使用 --target；桌面端用 runner 本机三元组
+        if [ "${{ matrix.platform }}" = "android" ] || [ "${{ matrix.platform }}" = "ios" ]; then
           cargo build $BUILD_FLAG --lib --target ${{ matrix.rust-target }}
         else
           cargo build $BUILD_FLAG --lib
@@ -173,16 +173,13 @@ jobs:
       run: |
         mkdir -p artifacts
         if [ "${{ inputs.build_type }}" = "release" ]; then
-          # 复制 Flutter 构建输出
           cp -r app/build/macos/Build/Products/Release/v8ray.app artifacts/
-          # 复制 Rust 动态库到应用的 MacOS 目录
-          cp core/target/${{ matrix.rust-target }}/release/libv8ray_core.dylib artifacts/v8ray.app/Contents/MacOS/
-          # 复制 v8ray-core 可执行文件
-          cp core/target/${{ matrix.rust-target }}/release/v8ray-core artifacts/
+          cp core/target/release/libv8ray_core.dylib artifacts/v8ray.app/Contents/MacOS/
+          cp core/target/release/v8ray-core artifacts/
         else
           cp -r app/build/macos/Build/Products/Debug/v8ray.app artifacts/
-          cp core/target/${{ matrix.rust-target }}/debug/libv8ray_core.dylib artifacts/v8ray.app/Contents/MacOS/
-          cp core/target/${{ matrix.rust-target }}/debug/v8ray-core artifacts/
+          cp core/target/debug/libv8ray_core.dylib artifacts/v8ray.app/Contents/MacOS/
+          cp core/target/debug/v8ray-core artifacts/
         fi
         # 验证动态库已复制
         echo "Contents of v8ray.app/Contents/MacOS:"

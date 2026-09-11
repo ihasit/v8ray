@@ -38,6 +38,13 @@ if [ -n "$RUST_TARGET" ]; then
     echo "Rust target: $RUST_TARGET"
     rustup target add "$RUST_TARGET"
     TARGET_ARGS=(--target "$RUST_TARGET")
+    # 显式 --target 时按交叉编译处理，必须带上 Apple SDK，否则 ld 找不到 -lSystem
+    if [ "$(uname -s)" = "Darwin" ]; then
+        export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
+        export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-10.15}"
+        echo "SDKROOT=$SDKROOT"
+        echo "MACOSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
+    fi
 fi
 
 if [ "$BUILD_MODE" == "release" ]; then
