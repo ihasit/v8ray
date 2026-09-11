@@ -1,9 +1,9 @@
 name: Release
 
+# 标签自动发布已合并到 Build workflow（.github/workflows/build.yml）。
+# 本 workflow 仅保留手动触发，避免同一 tag 重复打 Release。
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always

@@ -1,7 +1,8 @@
 # V8Ray Project .gitignore
 
 # Documentation (as requested)
-docs/
+docs/*
+!docs/requirmment/
 .augment/
 # Rust
 core/target/

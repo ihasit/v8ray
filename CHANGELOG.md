@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.12] - 2026-09-11
+
+### 🐛 修复
+
+- **修复 macOS 启动时 SQLite 无法打开数据库（code 14）**:
+  - 订阅数据库改存系统应用数据目录，不再写入 `.app/Contents/MacOS/`
+  - 若旧位置仍有 `v8ray_subscriptions.db`，启动时自动迁移
+  - Rust 打开数据库前创建缺失父目录，并用文件路径替代 `sqlite://` URI
+
+### ✨ 功能
+
+- **GitHub Actions 自动构建**:
+  - 推送任意 tag 触发 Linux / Windows / macOS Release 构建
+  - 构建产物上传 Artifact，并发布到 GitHub Releases
+  - macOS 打包时将 `libv8ray_core.dylib` 复制进 `.app`
+
+---
+
 ## [0.2.11] - 2025-12-22
 
 ### 🔧 调试

@@ -75,12 +75,9 @@ Future<void> main() async {
 
   // 初始化订阅管理器
   try {
-    // 获取程序当前目录
-    final exePath = Platform.resolvedExecutable;
-    final exeDir = Directory(File(exePath).parent.path);
-
-    // 数据库文件直接放在程序目录下
-    final dbPath = '${exeDir.path}/v8ray_subscriptions.db';
+    // macOS 沙盒无法写入 .app 包内，Windows/Linux 安装目录通常也不可写。
+    // 统一放到系统应用数据目录（Application Support / AppData / ~/.local/share）。
+    final dbPath = await _resolveDatabasePath();
     appLogger.info('Initializing subscription manager with database: $dbPath');
 
     await api.initSubscriptionManager(dbPath: dbPath);
@@ -265,6 +262,41 @@ class V8RayApp extends ConsumerWidget {
       locale: locale,
     );
   }
+}
+
+const String _databaseFileName = 'v8ray_subscriptions.db';
+
+/// 解析可写的订阅数据库路径，必要时从可执行文件旁的旧位置迁移。
+Future<String> _resolveDatabasePath() async {
+  final appSupportDir = await getApplicationSupportDirectory();
+  await appSupportDir.create(recursive: true);
+  final dbPath = '${appSupportDir.path}${Platform.pathSeparator}$_databaseFileName';
+
+  final dbFile = File(dbPath);
+  if (dbFile.existsSync()) {
+    return dbPath;
+  }
+
+  final exeDir = Directory(File(Platform.resolvedExecutable).parent.path);
+  final legacyFile = File(
+    '${exeDir.path}${Platform.pathSeparator}$_databaseFileName',
+  );
+  if (legacyFile.existsSync()) {
+    try {
+      await legacyFile.copy(dbPath);
+      appLogger.info(
+        'Migrated subscription database from ${legacyFile.path} to $dbPath',
+      );
+    } catch (e, stackTrace) {
+      appLogger.warning(
+        'Failed to migrate legacy database, creating a new one at $dbPath',
+        e,
+        stackTrace,
+      );
+    }
+  }
+
+  return dbPath;
 }
 
 /// 创建外部库加载器

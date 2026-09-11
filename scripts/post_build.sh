@@ -31,6 +31,32 @@ fi
 
 dart download_xray.dart --build-mode "$BUILD_MODE" $FORCE_FLAG
 
+# macOS：Flutter 不会自动把 Rust dylib 打进 .app，需手动复制
+if [ "$(uname -s)" = "Darwin" ]; then
+    echo ""
+    echo "Copying libv8ray_core.dylib into the macOS app bundle..."
+    if [ "$BUILD_MODE" = "release" ]; then
+        APP_MACOS="$PROJECT_ROOT/app/build/macos/Build/Products/Release/v8ray.app/Contents/MacOS"
+        RUST_LIB="$PROJECT_ROOT/core/target/release/libv8ray_core.dylib"
+    else
+        APP_MACOS="$PROJECT_ROOT/app/build/macos/Build/Products/Debug/v8ray.app/Contents/MacOS"
+        RUST_LIB="$PROJECT_ROOT/core/target/debug/libv8ray_core.dylib"
+    fi
+
+    if [ ! -f "$RUST_LIB" ]; then
+        echo "ERROR: Rust library not found: $RUST_LIB"
+        exit 1
+    fi
+    if [ ! -d "$APP_MACOS" ]; then
+        echo "ERROR: App bundle MacOS directory not found: $APP_MACOS"
+        exit 1
+    fi
+
+    cp "$RUST_LIB" "$APP_MACOS/"
+    echo "✓ Copied $(basename "$RUST_LIB") to $APP_MACOS"
+    ls -la "$APP_MACOS"
+fi
+
 echo ""
 echo "✓ Post-build completed successfully"
 

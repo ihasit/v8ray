@@ -9,7 +9,6 @@ use sqlx::{
     Row,
 };
 use std::path::Path;
-use std::str::FromStr;
 use tracing::{debug, info};
 use uuid::Uuid;
 
@@ -23,10 +22,25 @@ impl SubscriptionStorage {
     /// Create a new storage manager with the given database path
     pub async fn new<P: AsRef<Path>>(db_path: P) -> StorageResult<Self> {
         let path = db_path.as_ref();
+
+        // Keep in-memory databases working for tests (`:memory:` is not a file path)
+        if path.as_os_str() == ":memory:" {
+            return Self::new_in_memory().await;
+        }
+
         info!("Opening subscription database: {}", path.display());
 
-        // Use SqliteConnectOptions for better control
-        let options = SqliteConnectOptions::from_str(&format!("sqlite://{}", path.display()))?
+        // SQLite cannot create the file if the parent directory is missing
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent)?;
+            }
+        }
+
+        // Use filename() instead of a sqlite:// URI so paths with spaces
+        // (e.g. Application Support) and Windows drive letters work.
+        let options = SqliteConnectOptions::new()
+            .filename(path)
             .create_if_missing(true);
 
         let pool = SqlitePool::connect_with(options).await?;
@@ -345,6 +359,23 @@ mod tests {
     #[tokio::test]
     async fn test_storage_creation() {
         let storage = SubscriptionStorage::new_in_memory().await;
+        assert!(storage.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_storage_creates_missing_parent_directory() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let db_path = temp_dir.path().join("nested").join("data").join("v8ray.db");
+        assert!(!db_path.parent().unwrap().exists());
+
+        let storage = SubscriptionStorage::new(&db_path).await;
+        assert!(storage.is_ok());
+        assert!(db_path.exists());
+    }
+
+    #[tokio::test]
+    async fn test_storage_memory_alias() {
+        let storage = SubscriptionStorage::new(":memory:").await;
         assert!(storage.is_ok());
     }
 

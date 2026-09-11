@@ -1,0 +1,192 @@
+name: Build
+
+# 自动构建桌面端可运行包：
+# - 推送 tag（推荐 v0.2.12）：Release 构建，上传 Artifact，并发布 GitHub Release
+# - push 到 main/master/develop：Release 构建并上传 Artifact
+# - Pull Request：同样构建，便于下载验证
+# - 手动触发：可选 debug / release
+#
+# 注意：tag 触发不能和 paths 写在同一个 push 里，否则 GitHub 会按路径过滤掉标签推送。
+on:
+  push:
+    branches: [main, master, develop]
+    tags:
+      - '*'
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - 'app/**'
+      - 'core/**'
+      - 'scripts/**'
+      - 'flutter_rust_bridge.yaml'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - debug
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: stable
+  # 与 README / pubspec 对齐；CI 使用 stable 通道，避免 master 漂移
+  FLUTTER_VERSION: '3.38.5'
+  CI: true
+  FLUTTER_SUPPRESS_ANALYTICS: true
+  PUB_ENVIRONMENT: bot.github
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            os: ubuntu-latest
+            platform: linux
+            asset_name: v8ray-linux-x64
+            asset_ext: tar.gz
+          - name: Windows x64
+            os: windows-latest
+            platform: windows
+            asset_name: v8ray-windows-x64
+            asset_ext: zip
+          - name: macOS arm64
+            os: macos-latest
+            platform: macos
+            asset_name: v8ray-macos-arm64
+            asset_ext: tar.gz
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve build type
+        id: meta
+        shell: bash
+        run: |
+          BUILD_TYPE="${{ github.event.inputs.build_type }}"
+          if [ -z "$BUILD_TYPE" ]; then
+            BUILD_TYPE="release"
+          fi
+          echo "build_type=$BUILD_TYPE" >> "$GITHUB_OUTPUT"
+          echo "Building $BUILD_TYPE for ${{ matrix.platform }}"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+          prefix-key: v8ray-core
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev unzip
+
+      - name: Pre-build Rust library
+        if: matrix.platform != 'windows'
+        run: bash scripts/pre_build.sh ${{ steps.meta.outputs.build_type }}
+
+      - name: Pre-build Rust library (Windows)
+        if: matrix.platform == 'windows'
+        run: scripts\pre_build.bat ${{ steps.meta.outputs.build_type }}
+        shell: cmd
+
+      - name: Build Flutter ${{ steps.meta.outputs.build_type }}
+        working-directory: ./app
+        shell: bash
+        run: |
+          if [ "${{ steps.meta.outputs.build_type }}" = "debug" ]; then
+            flutter build ${{ matrix.platform }} --debug
+          else
+            flutter build ${{ matrix.platform }} --release
+          fi
+
+      - name: Post-build (Xray + native libs)
+        if: matrix.platform != 'windows'
+        run: bash scripts/post_build.sh ${{ steps.meta.outputs.build_type }}
+
+      - name: Post-build (Xray + native libs) (Windows)
+        if: matrix.platform == 'windows'
+        run: scripts\post_build.bat ${{ steps.meta.outputs.build_type }}
+        shell: cmd
+
+      - name: Package Linux
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          SRC="app/build/linux/x64/${{ steps.meta.outputs.build_type }}/bundle"
+          test -d "$SRC"
+          tar -czf "${{ matrix.asset_name }}.tar.gz" -C "$SRC" .
+          ls -lh "${{ matrix.asset_name }}.tar.gz"
+
+      - name: Package Windows
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $config = if ("${{ steps.meta.outputs.build_type }}" -eq "debug") { "Debug" } else { "Release" }
+          $src = "app\build\windows\x64\runner\$config"
+          if (-not (Test-Path $src)) { throw "Build output not found: $src" }
+          Compress-Archive -Path "$src\*" -DestinationPath "${{ matrix.asset_name }}.zip" -Force
+          Get-Item "${{ matrix.asset_name }}.zip"
+
+      - name: Package macOS
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          if [ "${{ steps.meta.outputs.build_type }}" = "debug" ]; then
+            PRODUCT="Debug"
+          else
+            PRODUCT="Release"
+          fi
+          SRC="app/build/macos/Build/Products/${PRODUCT}"
+          test -d "$SRC/v8ray.app"
+          echo "App bundle contents:"
+          ls -la "$SRC/v8ray.app/Contents/MacOS/"
+          tar -czf "${{ matrix.asset_name }}.tar.gz" -C "$SRC" v8ray.app
+          ls -lh "${{ matrix.asset_name }}.tar.gz"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}-${{ steps.meta.outputs.build_type }}
+          path: ${{ matrix.asset_name }}.${{ matrix.asset_ext }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.asset_name }}.${{ matrix.asset_ext }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

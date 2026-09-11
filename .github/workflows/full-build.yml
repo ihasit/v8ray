@@ -111,10 +111,15 @@ jobs:
     - name: Build Rust (${{ inputs.build_type }})
       if: steps.check_platform.outputs.should_build == 'true'
       run: |
+        BUILD_FLAG=""
         if [ "${{ inputs.build_type }}" = "release" ]; then
-          cargo build --release --target ${{ matrix.rust-target }}
+          BUILD_FLAG="--release"
+        fi
+        # 桌面端 Flutter CMake 读取 core/target/{debug,release}/，不能使用 --target
+        if [ "${{ matrix.platform }}" = "android" ] || [ "${{ matrix.platform }}" = "ios" ]; then
+          cargo build $BUILD_FLAG --lib --target ${{ matrix.rust-target }}
         else
-          cargo build --target ${{ matrix.rust-target }}
+          cargo build $BUILD_FLAG --lib
         fi
       working-directory: ./core
       shell: bash
