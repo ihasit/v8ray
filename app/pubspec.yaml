@@ -1,7 +1,7 @@
 name: v8ray
 description: V8Ray - Cross-platform Xray Core client built with Flutter and Rust
 publish_to: 'none'
-version: 0.2.12+1
+version: 0.2.13+1
 
 environment:
   sdk: '>=3.7.0 <4.0.0'
@@ -40,8 +40,8 @@ dependencies:
   freezed_annotation: ^3.1.0
   riverpod_annotation: ^2.6.1
 
-  # Flutter Rust Bridge
-  flutter_rust_bridge: ^2.11.0
+  # Flutter Rust Bridge（必须与生成代码 / Rust crate 同为 2.11.1）
+  flutter_rust_bridge: 2.11.1
   ffi: ^2.1.0
 
 dev_dependencies:

@@ -31,7 +31,7 @@ jobs:
             asset-ext: zip
           - os: macos-latest
             flutter-target: macos
-            asset-name: v8ray-macos-x64
+            asset-name: v8ray-macos-arm64
             asset-ext: tar.gz
 
     steps:

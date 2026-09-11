@@ -1,7 +1,7 @@
 name: Build
 
 # 自动构建桌面端可运行包：
-# - 推送 tag（推荐 v0.2.12）：Release 构建，上传 Artifact，并发布 GitHub Release
+# - 推送 tag（推荐 v0.2.13）：Release 构建，上传 Artifact，并发布 GitHub Release
 # - push 到 main/master/develop：Release 构建并上传 Artifact
 # - Pull Request：同样构建，便于下载验证
 # - 手动触发：可选 debug / release
@@ -57,16 +57,22 @@ jobs:
           - name: Linux x64
             os: ubuntu-latest
             platform: linux
+            rust_target: ''
+            arch: x64
             asset_name: v8ray-linux-x64
             asset_ext: tar.gz
           - name: Windows x64
             os: windows-latest
             platform: windows
+            rust_target: ''
+            arch: x64
             asset_name: v8ray-windows-x64
             asset_ext: zip
           - name: macOS arm64
             os: macos-latest
             platform: macos
+            rust_target: aarch64-apple-darwin
+            arch: arm64
             asset_name: v8ray-macos-arm64
             asset_ext: tar.gz
 
@@ -89,11 +95,15 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
 
+      - name: Add Rust target
+        if: matrix.rust_target != ''
+        run: rustup target add ${{ matrix.rust_target }}
+
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: core
-          prefix-key: v8ray-core
+          prefix-key: v8ray-core-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -112,7 +122,7 @@ jobs:
 
       - name: Pre-build Rust library
         if: matrix.platform != 'windows'
-        run: bash scripts/pre_build.sh ${{ steps.meta.outputs.build_type }}
+        run: bash scripts/pre_build.sh ${{ steps.meta.outputs.build_type }} ${{ matrix.rust_target }}
 
       - name: Pre-build Rust library (Windows)
         if: matrix.platform == 'windows'
@@ -122,7 +132,13 @@ jobs:
       - name: Build Flutter ${{ steps.meta.outputs.build_type }}
         working-directory: ./app
         shell: bash
+        env:
+          ARCHS: ${{ matrix.arch == 'arm64' && 'arm64' || '' }}
         run: |
+          if [ "${{ matrix.platform }}" = "macos" ] && [ "${{ matrix.arch }}" = "arm64" ]; then
+            export ARCHS=arm64
+            export ONLY_ACTIVE_ARCH=YES
+          fi
           if [ "${{ steps.meta.outputs.build_type }}" = "debug" ]; then
             flutter build ${{ matrix.platform }} --debug
           else
@@ -170,6 +186,12 @@ jobs:
           test -d "$SRC/v8ray.app"
           echo "App bundle contents:"
           ls -la "$SRC/v8ray.app/Contents/MacOS/"
+          echo "Binary architectures:"
+          file "$SRC/v8ray.app/Contents/MacOS/v8ray"
+          file "$SRC/v8ray.app/Contents/MacOS/libv8ray_core.dylib" || true
+          APP_ARCHS="$(lipo -archs "$SRC/v8ray.app/Contents/MacOS/v8ray")"
+          echo "lipo archs: $APP_ARCHS"
+          echo "$APP_ARCHS" | grep -q "${{ matrix.arch }}"
           tar -czf "${{ matrix.asset_name }}.tar.gz" -C "$SRC" v8ray.app
           ls -lh "${{ matrix.asset_name }}.tar.gz"
 

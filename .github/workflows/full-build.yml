@@ -44,7 +44,7 @@ jobs:
             flutter-target: windows
           - platform: macos
             os: macos-latest
-            rust-target: x86_64-apple-darwin
+            rust-target: aarch64-apple-darwin
             flutter-target: macos
           - platform: android
             os: ubuntu-latest
@@ -115,8 +115,8 @@ jobs:
         if [ "${{ inputs.build_type }}" = "release" ]; then
           BUILD_FLAG="--release"
         fi
-        # 桌面端 Flutter CMake 读取 core/target/{debug,release}/，不能使用 --target
-        if [ "${{ matrix.platform }}" = "android" ] || [ "${{ matrix.platform }}" = "ios" ]; then
+        # Android/iOS/macOS arm64 使用显式 --target；Linux/Windows 走默认目录供 Flutter CMake 读取
+        if [ "${{ matrix.platform }}" = "android" ] || [ "${{ matrix.platform }}" = "ios" ] || [ "${{ matrix.platform }}" = "macos" ]; then
           cargo build $BUILD_FLAG --lib --target ${{ matrix.rust-target }}
         else
           cargo build $BUILD_FLAG --lib
@@ -187,7 +187,7 @@ jobs:
         # 验证动态库已复制
         echo "Contents of v8ray.app/Contents/MacOS:"
         ls -la artifacts/v8ray.app/Contents/MacOS/
-        tar -czf v8ray-macos-${{ inputs.build_type }}.tar.gz -C artifacts .
+        tar -czf v8ray-macos-arm64-${{ inputs.build_type }}.tar.gz -C artifacts .
       shell: bash
 
     - name: Package artifacts (Android)

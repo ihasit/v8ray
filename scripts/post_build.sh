@@ -37,11 +37,23 @@ if [ "$(uname -s)" = "Darwin" ]; then
     echo "Copying libv8ray_core.dylib into the macOS app bundle..."
     if [ "$BUILD_MODE" = "release" ]; then
         APP_MACOS="$PROJECT_ROOT/app/build/macos/Build/Products/Release/v8ray.app/Contents/MacOS"
-        RUST_LIB="$PROJECT_ROOT/core/target/release/libv8ray_core.dylib"
+        MODE_DIR="release"
     else
         APP_MACOS="$PROJECT_ROOT/app/build/macos/Build/Products/Debug/v8ray.app/Contents/MacOS"
-        RUST_LIB="$PROJECT_ROOT/core/target/debug/libv8ray_core.dylib"
+        MODE_DIR="debug"
     fi
+
+    RUST_LIB=""
+    for candidate in \
+        "$PROJECT_ROOT/core/target/aarch64-apple-darwin/${MODE_DIR}/libv8ray_core.dylib" \
+        "$PROJECT_ROOT/core/target/x86_64-apple-darwin/${MODE_DIR}/libv8ray_core.dylib" \
+        "$PROJECT_ROOT/core/target/${MODE_DIR}/libv8ray_core.dylib"
+    do
+        if [ -f "$candidate" ]; then
+            RUST_LIB="$candidate"
+            break
+        fi
+    done
 
     if [ ! -f "$RUST_LIB" ]; then
         echo "ERROR: Rust library not found: $RUST_LIB"

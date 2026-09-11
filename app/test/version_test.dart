@@ -8,8 +8,8 @@ void main() {
       expect(AppInfo.version, matches(RegExp(r'^\d+\.\d+\.\d+$')));
     });
 
-    test('AppInfo version should be 0.2.12', () {
-      expect(AppInfo.version, '0.2.12');
+    test('AppInfo version should be 0.2.13', () {
+      expect(AppInfo.version, '0.2.13');
     });
 
     test('AppInfo buildNumber should be valid', () {
@@ -27,7 +27,7 @@ void main() {
     });
 
     test('AppInfo userAgent should match format', () {
-      expect(AppInfo.userAgent, 'V8Ray/0.2.12');
+      expect(AppInfo.userAgent, 'V8Ray/0.2.13');
     });
 
     test('AppInfo should have all required fields', () {

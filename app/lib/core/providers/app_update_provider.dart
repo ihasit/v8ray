@@ -675,8 +675,9 @@ del "%~f0"
       platformPattern = 'linux-x64';
       expectedExtension = '.tar.gz';
     } else if (Platform.isMacOS) {
-      platformPattern = 'macos-x64';
       expectedExtension = '.tar.gz';
+      final arch = _macosArch();
+      platformPattern = arch == 'arm64' ? 'macos-arm64' : 'macos-x64';
     } else {
       appLogger.warning('Unsupported platform for auto-update');
       return null;
@@ -699,6 +700,20 @@ del "%~f0"
 
     appLogger.warning('No matching asset found for platform: $platformPattern');
     return null;
+  }
+
+  /// macOS 架构：arm64 或 x64
+  String _macosArch() {
+    try {
+      final result = Process.runSync('uname', ['-m']);
+      if (result.exitCode == 0 &&
+          result.stdout.toString().trim() == 'arm64') {
+        return 'arm64';
+      }
+    } catch (e) {
+      appLogger.warning('Failed to detect macOS arch, fallback to x64: $e');
+    }
+    return 'x64';
   }
 
   /// 比较版本号

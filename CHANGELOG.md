@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.13] - 2026-09-11
+
+### 🐛 修复
+
+- **锁定 Flutter Rust Bridge 2.11.1**:
+  - Dart `flutter_rust_bridge` 从 `^2.11.0` 钉为 `2.11.1`，避免运行时升到 2.13.0 导致初始化失败
+  - Rust `flutter_rust_bridge` / `flutter_rust_bridge_codegen` 钉为 `=2.11.1`
+
+### ✨ 功能
+
+- **发布 macOS arm64 包**:
+  - GitHub Release 增加 `v8ray-macos-arm64.tar.gz`
+  - 使用 `aarch64-apple-darwin` 构建并校验二进制架构
+  - Apple Silicon 自动更新改为匹配 `macos-arm64`
+
+---
+
 ## [0.2.12] - 2026-09-11
 
 ### 🐛 修复
